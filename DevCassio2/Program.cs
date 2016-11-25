@@ -30,7 +30,7 @@
  * done harass e, last hit,jungle no du use e,check gap close. 
  * --------------------------------------------------------------------------------------------
  *  - block r, check mim R enemym, fix e dmg, assist r, better W useage
- *  +add gap close W, flee, Q,W,E, rocket r, flash r
+ *  +add gap close W, flee, Q,W,E, rocket r, flash r, 1v1logic
  */
 
     internal class Program
