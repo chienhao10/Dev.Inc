@@ -9,33 +9,33 @@
     using DevCommom;
     using SharpDX;
 
-/*
- * ##### DevCassio Mods #####
- * 
- * + AntiGapCloser with R when LowHealth
- * + Interrupt Danger Spell with R when LowHealth
- * + LastHit E On Posioned Minions
- * + Ignite KS
- * + Menu No-Face Exploit (PacketCast)
- * + Skin Hack
- * + Show E Damage on Enemy HPBar
- * + Assisted Ult
- * + Block Ult if will not hit
- * + Auto Ult Enemy Under Tower
- * + Auto Ult if will hit X
- * + Jungle Clear
- * + R to Save Yourself, when MinHealth and Enemy IsFacing
- * + Auto Spell Level UP
- * + Play Legit Menu :)
- * done harass e, last hit,jungle no du use e,check gap close. 
- * --------------------------------------------------------------------------------------------
- *  - block r, check mim R enemym, fix e dmg, assist r, better W useage
- *  +add gap close W, flee, Q,W,E, rocket r, flash r, 1v1logic
- */
+    /*
+     * ##### DevCassio Mods #####
+     * 
+     * + AntiGapCloser with R when LowHealth
+     * + Interrupt Danger Spell with R when LowHealth
+     * + LastHit E On Posioned Minions
+     * + Ignite KS
+     * + Menu No-Face Exploit (PacketCast)
+     * + Skin Hack
+     * + Show E Damage on Enemy HPBar
+     * + Assisted Ult
+     * + Block Ult if will not hit
+     * + Auto Ult Enemy Under Tower
+     * + Auto Ult if will hit X
+     * + Jungle Clear
+     * + R to Save Yourself, when MinHealth and Enemy IsFacing
+     * + Auto Spell Level UP
+     * + Play Legit Menu :)
+     * done harass e, last hit,jungle no du use e,check gap close. ,flash r,(temp sfx),e dmg fixed,assist r ok
+     * --------------------------------------------------------------------------------------------
+     *  - block r, check mim R enemym,  better W useage
+     *  +add gap close W, flee, Q,W,E,1v1logic?
+     */
 
     internal class Program
     {
-        private static Items.Item Belt = new Items.Item(3150, 800);
+        public static Items.Item Zhonya = new Items.Item(3157, 0);
         private static Menu Config;
         private static Orbwalking.Orbwalker Orbwalker;
         private static readonly List<Spell> SpellList = new List<Spell>();
@@ -342,7 +342,7 @@
                 {
                     var flashPos = Player.Position.Extend(target.Position, 425f);
                     var rHit = GetRHitCount(flashPos);
-
+                    
                     if (rHit.Item1.Count >= Config.Item("Rminflash").GetValue<Slider>().Value)
                     {
                         var castPos = Player.Position.Extend(rHit.Item2, -(Player.Position.Distance(rHit.Item2) * 2));
