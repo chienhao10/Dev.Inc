@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
+    using System.Drawing;
     using LeagueSharp;
     using LeagueSharp.Common;
     using DevCommom;
@@ -27,10 +28,10 @@
      * + R to Save Yourself, when MinHealth and Enemy IsFacing
      * + Auto Spell Level UP
      * + Play Legit Menu :)
-     * done harass e, last hit,jungle no du use e,check gap close. ,flash r,(temp sfx),e dmg fixed,assist r ok
+     * done harass e, last hit,jungle no du use e,check gap close. ,flash r,(temp sfx),e dmg fixed,assist r ok ,check mim R enemym,, flee, ks
      * --------------------------------------------------------------------------------------------
-     *  - block r, check mim R enemym,  better W useage
-     *  +add gap close W, flee, Q,W,E,1v1logic?
+     *  + block r
+     *  
      */
 
     internal class Program
@@ -111,7 +112,8 @@
 
         private static void InitializeMainMenu()
         {
-            Config = new Menu("DevCassio", "DevCassio", true);
+            Config = new Menu("DevCassio V2", "DevCassio V2", true).SetFontStyle(
+                FontStyle.Bold, SharpDX.Color.Purple);
 
             var targetSelectorMenu = Config.AddSubMenu(new Menu("Target Selector", "Target Selector"));
             {
@@ -123,7 +125,8 @@
                 Orbwalker = new Orbwalking.Orbwalker(orbMenu);
             }
 
-            var comboMenu = Config.AddSubMenu(new Menu("Combo", "Combo"));
+            var comboMenu = Config.AddSubMenu(new Menu("Combo", "Combo").SetFontStyle(
+                FontStyle.Bold, SharpDX.Color.Green));
             {
                 comboMenu.AddItem(new MenuItem("UseQCombo", "Use Q").SetValue(true));
                 comboMenu.AddItem(new MenuItem("UseWCombo", "Use W").SetValue(true));
@@ -180,7 +183,8 @@
                 lastHitMenu.AddItem(new MenuItem("UseELastHit", "Use E").SetValue(true));
             }
 
-            var ultMenu = Config.AddSubMenu(new Menu("Ultimate", "Ultimate"));
+            var ultMenu = Config.AddSubMenu(new Menu("Ultimate", "Ultimate").SetFontStyle(
+                FontStyle.Bold, SharpDX.Color.Red));
             {
                 ultMenu.AddItem(new MenuItem("UseAssistedUlt", "Use AssistedUlt").SetValue(true));
                 ultMenu
@@ -202,11 +206,36 @@
                     .AddItem(new MenuItem("RAntiGapcloserMinHealth", "R AntiGapcloser Min Health").SetValue(new Slider(60)));
             }
 
-            var miscMenu = Config.AddSubMenu(new Menu("Misc", "Misc"));
+            var miscMenu = Config.AddSubMenu(new Menu("Flee", "Flee"));
             {
-                miscMenu
+                /*miscMenu
                     .AddItem(new MenuItem("PacketCast", "No-Face Exploit (PacketCast)").SetValue(true))
-                    .SetTooltip("Packet Does Not Work, PLS IGNORE");
+                    .SetTooltip("Packet Does Not Work, PLS IGNORE.");*/
+                miscMenu
+                    .AddItem(new MenuItem("FleeON", "Enable Flee").SetValue(true));
+                miscMenu
+                    .AddItem(new MenuItem("FleeK", "Flee Key")
+                    .SetValue(new KeyBind("H".ToCharArray()[0], KeyBindType.Press)));
+                miscMenu
+                    .AddItem(new MenuItem("FleeQ", "Cast Q While Flee").SetValue(true))
+                    .SetTooltip("Will Cast Q On Enemy To Gain Movement Speed.");
+                miscMenu
+                    .AddItem(new MenuItem("FleeW", "Cast W While Flee").SetValue(false));
+                miscMenu
+                    .AddItem(new MenuItem("FleeE", "Cast E While Flee").SetValue(false))
+                    .SetTooltip("If You Have Rylai, Recommand On.");
+            }
+
+            var KSMenu = Config.AddSubMenu(new Menu("KillSteal", "KillSteal"));
+            {
+                KSMenu
+                    .AddItem(new MenuItem("KsOn", "Enable KS").SetValue(false));
+                KSMenu
+                    .AddItem(new MenuItem("QkS", "Q KS").SetValue(false));
+                KSMenu
+                    .AddItem(new MenuItem("EkS", "E KS").SetValue(false));
+                KSMenu
+                    .AddItem(new MenuItem("RkS", "R KS").SetValue(false));
             }
 
             var legitMenu = Config.AddSubMenu(new Menu("Im Legit! :)", "Legit"));
@@ -247,6 +276,20 @@
             }
 
             levelUpManager.AddToMenu(ref Config);
+
+            var creditMenu = Config.AddSubMenu(new Menu("Credits", "Credits"));
+            creditMenu.AddItem(new MenuItem("ME: LOVETAIWAN♥", "ME: LOVETAIWAN♥")).SetFontStyle(
+                FontStyle.Bold, SharpDX.Color.Pink);
+            creditMenu.AddItem(new MenuItem("Soresu", "Soresu")).SetFontStyle(
+                FontStyle.Bold, SharpDX.Color.Yellow);
+            creditMenu.AddItem(new MenuItem("Nightmoon", "Nightmoon")).SetFontStyle(
+                FontStyle.Bold, SharpDX.Color.LightBlue);
+            creditMenu.AddItem(new MenuItem("InjectionDev <3", "InjectionDev <3")).SetFontStyle(
+                FontStyle.Bold, SharpDX.Color.Orange);
+            creditMenu.AddItem(new MenuItem("Exory", "Exory")).SetFontStyle(
+                FontStyle.Bold, SharpDX.Color.Brown);
+
+            
 
             Config.AddToMainMenu();
 
@@ -302,6 +345,18 @@
             if (Config.Item("HarassToggle").GetValue<KeyBind>().Active)
             {
                 Harass();
+            }
+            if (Config.Item("FleeON").GetValue<bool>())
+            {
+                if (Config.Item("FleeK").GetValue<KeyBind>().Active)
+                {
+                    Flee();
+                }
+            }
+
+            if (Config.Item("KsOn").GetValue<bool>())
+            {
+                KS();
             }
 
             UseUltUnderTower();
@@ -369,7 +424,7 @@
 
         private static void UseUltUnderTower()
         {
-            var packetCast = Config.Item("PacketCast").GetValue<bool>();
+            /*var packetCast = Config.Item("PacketCast").GetValue<bool>();*/
             var UseUltUnderTower = Config.Item("UseUltUnderTower").GetValue<bool>();
 
             if (UseUltUnderTower)
@@ -381,6 +436,66 @@
                         R.Cast(eTarget.ServerPosition);
                     }
                 }
+            }
+        }
+
+        private static void Flee()
+        {
+            Orbwalking.MoveTo(Game.CursorPos);
+            var eTarget = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Magical);
+
+            if (eTarget == null)
+            {
+                return;
+            }
+            var FleeW = Config.Item("FleeW").GetValue<bool>();
+            if (FleeW && W.IsReady() && eTarget.IsValidTarget(W.Range) && !eTarget.IsValidTarget(225))
+            {
+                W.Cast(eTarget.ServerPosition);
+            }
+
+            var FleeQ = Config.Item("FleeQ").GetValue<bool>();
+            var FleeE = Config.Item("FleeE").GetValue<bool>();
+
+            if (FleeQ && Q.IsReady())
+            {
+                Q.Cast(eTarget.Position);
+                return;
+            }
+
+            if (eTarget != null && FleeE && E.IsReady())
+            {
+                E.CastOnUnit(eTarget);
+                return;
+            }
+        }
+
+        private static void KS()
+        {
+
+            if (Q.IsReady() && Config.Item("QkS").GetValue<bool>())
+            {
+                foreach (var target in HeroManager.Enemies.Where(x => x.IsValidTarget(Q.Range) && x.Health < Q.GetDamage(x) && !x.HasBuff("guardianangle") && !x.IsZombie))
+                    if (Q.IsReady())
+                    {
+                        Q.Cast(target.ServerPosition);
+                    }
+            }
+            if (E.IsReady() && Config.Item("EkS").GetValue<bool>())
+            {
+                foreach (var target in HeroManager.Enemies.Where(x => x.IsValidTarget(E.Range) && x.Health < E.GetDamage(x) && !x.HasBuff("guardianangle") && !x.IsZombie))
+                    if (E.IsReady())
+                    {
+                        E.Cast(target);
+                    }
+            }
+            if (R.IsReady() && Config.Item("RkS").GetValue<bool>())
+            {
+                foreach (var target in HeroManager.Enemies.Where(x => x.IsValidTarget(R.Range) && x.Health < R.GetDamage(x) && !x.HasBuff("guardianangle") && !x.IsZombie))
+                    if (R.IsReady())
+                    {
+                        R.Cast(target.ServerPosition);
+                    }
             }
         }
 
@@ -398,7 +513,7 @@
             var useE = Config.Item("UseECombo").GetValue<bool>();
             var useR = Config.Item("UseRCombo").GetValue<bool>();
             var useIgnite = Config.Item("UseIgnite").GetValue<bool>();
-            var packetCast = Config.Item("PacketCast").GetValue<bool>();
+            /*var packetCast = Config.Item("PacketCast").GetValue<bool>();*/
             var RMinHit = Config.Item("RMinHit").GetValue<Slider>().Value;
             var RMinHitFacing = Config.Item("RMinHitFacing").GetValue<Slider>().Value;
             var UseRSaveYourself = Config.Item("UseRSaveYourself").GetValue<bool>();
@@ -518,7 +633,7 @@
             var useE = Config.Item("UseECombo").GetValue<bool>();
             var useR = Config.Item("UseRCombo").GetValue<bool>();
             var useIgnite = Config.Item("UseIgnite").GetValue<bool>();
-            var packetCast = Config.Item("PacketCast").GetValue<bool>();
+            /*var packetCast = Config.Item("PacketCast").GetValue<bool>();*/
 
             double totalComboDamage = 0;
 
@@ -558,7 +673,7 @@
                     {
                         //if (mustDebug)
                         //    Game.PrintChat("BurstCombo R");
-                        if (R.Cast(eTarget, packetCast, true) == Spell.CastStates.SuccessfullyCasted)
+                        if (R.Cast(eTarget) == Spell.CastStates.SuccessfullyCasted)
                         {
                             dtBurstComboStart = Environment.TickCount;
                         }
@@ -593,7 +708,7 @@
             var useQ = Config.Item("UseQHarass").GetValue<bool>();
             var useW = Config.Item("UseWHarass").GetValue<bool>();
             var useE = Config.Item("UseEHarass").GetValue<bool>();
-            var packetCast = Config.Item("PacketCast").GetValue<bool>();
+            /*var packetCast = Config.Item("PacketCast").GetValue<bool>();*/
 
             //if (mustDebug)
             //    Game.PrintChat("Harass Target -> " + eTarget.SkinName);
@@ -679,7 +794,7 @@
             var useE = Config.Item("UseELaneClear").GetValue<bool>();
             var UseELastHitLaneClear = Config.Item("UseELastHitLaneClear").GetValue<bool>();
             var UseELastHitLaneClearNonPoisoned = Config.Item("UseELastHitLaneClearNonPoisoned").GetValue<bool>();
-            var packetCast = Config.Item("PacketCast").GetValue<bool>();
+            /*var packetCast = Config.Item("PacketCast").GetValue<bool>();*/
             var LaneClearMinMana = Config.Item("LaneClearMinMana").GetValue<Slider>().Value;
 
             if (Q.IsReady() && useQ && Player.GetManaPerc() >= LaneClearMinMana)
@@ -786,7 +901,7 @@
 
             var UseQJungleClear = Config.Item("UseQJungleClear").GetValue<bool>();
             var UseEJungleClear = Config.Item("UseEJungleClear").GetValue<bool>();
-            var packetCast = Config.Item("PacketCast").GetValue<bool>();
+            /*var packetCast = Config.Item("PacketCast").GetValue<bool>();*/
             var mob = mobs.First();
 
             if (UseQJungleClear && Q.IsReady() && mob.IsValidTarget(Q.Range))
@@ -854,7 +969,7 @@
 
         private static void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            var packetCast = Config.Item("PacketCast").GetValue<bool>();
+            /*var packetCast = Config.Item("PacketCast").GetValue<bool>();*/
             var RAntiGapcloser = Config.Item("RAntiGapcloser").GetValue<bool>();
             var RAntiGapcloserMinHealth = Config.Item("RAntiGapcloserMinHealth").GetValue<Slider>().Value;
 
@@ -867,7 +982,7 @@
 
         private static void Interrupter2_OnInterruptableTarget(Obj_AI_Hero sender, Interrupter2.InterruptableTargetEventArgs args)
         {
-            var packetCast = Config.Item("PacketCast").GetValue<bool>();
+            /*var packetCast = Config.Item("PacketCast").GetValue<bool>();*/
             var RInterrupetSpell = Config.Item("RInterrupetSpell").GetValue<bool>();
             var RAntiGapcloserMinHealth = Config.Item("RAntiGapcloserMinHealth").GetValue<Slider>().Value;
 
@@ -1013,7 +1128,6 @@
         private static void CastAssistedUlt()
         {
             var eTarget = Player.GetNearestEnemy();
-            var packetCast = Config.Item("PacketCast").GetValue<bool>();
 
             if (eTarget.IsValidTarget(R.Range) && R.IsReady())
             {
