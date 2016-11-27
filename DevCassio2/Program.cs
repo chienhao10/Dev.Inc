@@ -48,11 +48,15 @@
         private static List<Obj_AI_Base> MinionList;
         private static LevelUpManager levelUpManager;
         private static SummonerSpellManager summonerSpellManager;
+        private static int lvl1, lvl2, lvl3, lvl4;
 
         private static long dtBurstComboStart;
         private static long dtLastQCast;
         private static long dtLastSaveYourself;
         private static long dtLastECast;
+
+        public static Obj_AI_Minion LastAttackedminiMinion;
+        public static float LastAttackedminiMinionTime;
         //private static bool mustDebugPredict = false;
 
         private static void Main(string[] args)
@@ -70,7 +74,7 @@
             }
 
             InitializeSpells();
-            InitializeLevelUpManager();
+            /*InitializeLevelUpManager();*/
             InitializeMainMenu();
             InitializeAttachEvents();
 
@@ -100,7 +104,7 @@
             summonerSpellManager = new SummonerSpellManager();
         }
 
-        private static void InitializeLevelUpManager()
+        /*private static void InitializeLevelUpManager()
         {
             var priority1 = new[] { 2, 0, 2, 1, 2, 3, 2, 0, 2, 0, 3, 0, 0, 1, 1, 3, 1, 1 };
             var priority2 = new[] { 0, 2, 2, 1, 2, 3, 2, 0, 2, 0, 3, 0, 0, 1, 2, 3, 1, 1 };
@@ -110,7 +114,7 @@
             levelUpManager.Add("E > Q > E > W ", priority1);
             levelUpManager.Add("Q > E > E > W ", priority2);
             levelUpManager.Add("Q > E > W > E ", priority3);
-        }
+        }*/
 
         private static void InitializeMainMenu()
         {
@@ -186,6 +190,7 @@
             var lastHitMenu = Config.AddSubMenu(new Menu("LastHit", "LastHit"));
             {
                 lastHitMenu.AddItem(new MenuItem("UseELastHit", "Use E").SetValue(true));
+                lastHitMenu.AddItem(new MenuItem("UseAaFarm", "Use AA In LastHit/LaneClear").SetValue(true));
             }
 
             var ultMenu = Config.AddSubMenu(new Menu("Ultimate", "Ultimate").SetFontStyle(
@@ -211,7 +216,7 @@
                     .AddItem(new MenuItem("RAntiGapcloserMinHealth", "R AntiGapcloser Min Health").SetValue(new Slider(60)));
             }
 
-            var miscMenu = Config.AddSubMenu(new Menu("Flee", "Flee"));
+            var miscMenu = Config.AddSubMenu(new Menu("Misc", "Misc"));
             {
                 /*miscMenu
                     .AddItem(new MenuItem("PacketCast", "No-Face Exploit (PacketCast)").SetValue(true))
@@ -229,6 +234,9 @@
                 miscMenu
                     .AddItem(new MenuItem("FleeE", "Cast E While Flee").SetValue(false))
                     .SetTooltip("If You Have Rylai, Recommand On.");
+                miscMenu
+                    .AddItem(new MenuItem("StackTear", "Stack Tear").SetValue(false)).SetValue(new KeyBind(
+                            "O".ToCharArray()[0],KeyBindType.Toggle));
             }
 
             var KSMenu = Config.AddSubMenu(new Menu("KillSteal", "KillSteal"));
@@ -251,6 +259,16 @@
                 legitMenu.AddItem(new MenuItem("DisableNFE", "Disable No-Face Exploit").SetValue(true));
                 legitMenu
                     .AddItem(new MenuItem("LegitCastDelay", "Cast E Delay").SetValue(new Slider(1000, 0, 2000)));
+            }
+
+            var AutoLevelerMenu = Config.AddSubMenu(new Menu("AutoLeveler Menu", "AutoLevelerMenu"));
+            { 
+                AutoLevelerMenu.AddItem(new MenuItem("AutoLevelUp", "AutoLevel Up Spells?").SetValue(true));
+                AutoLevelerMenu.AddItem(new MenuItem("AutoLevelUp1", "First: ").SetValue(new StringList(new[] { "Q", "W", "E", "R" }, 3)));
+                AutoLevelerMenu.AddItem(new MenuItem("AutoLevelUp2", "Second: ").SetValue(new StringList(new[] { "Q", "W", "E", "R" }, 0)));
+                AutoLevelerMenu.AddItem(new MenuItem("AutoLevelUp3", "Third: ").SetValue(new StringList(new[] { "Q", "W", "E", "R" }, 1)));
+                AutoLevelerMenu.AddItem(new MenuItem("AutoLevelUp4", "Fourth: ").SetValue(new StringList(new[] { "Q", "W", "E", "R" }, 2)));
+                AutoLevelerMenu.AddItem(new MenuItem("AutoLvlStartFrom", "AutoLeveler Start from Level: ").SetValue(new Slider(2, 6, 1)));
             }
 
             var skinMenu = Config.AddSubMenu(new Menu("Skins Menu", "SkinMenu"));
@@ -283,7 +301,7 @@
                 drawingMenu.AddItem(new MenuItem("EDamage", "Show E Damage on HPBar").SetValue(true));
             }
 
-            levelUpManager.AddToMenu(ref Config);
+            /*levelUpManager.AddToMenu(ref Config);*/
 
             var creditMenu = Config.AddSubMenu(new Menu("Credits", "Credits"));
             creditMenu.AddItem(new MenuItem("ME: LOVETAIWAN♥", "ME: LOVETAIWAN♥")).SetFontStyle(
@@ -327,6 +345,7 @@
         {
             Game.OnUpdate += Game_OnGameUpdate;
             Game.OnWndProc += Game_OnWndProc;
+            Obj_AI_Base.OnLevelUp += Obj_AI_Base_OnLevelUp;
             AntiGapcloser.OnEnemyGapcloser += AntiGapcloser_OnEnemyGapcloser;
             Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
             Spellbook.OnCastSpell += Spellbook_OnCastSpell;
@@ -368,8 +387,19 @@
                 KS();
             }
 
+            if (Config.Item("StackTear").GetValue<KeyBind>().Active)
+            {
+                Stack();
+            }
             UseUltUnderTower();
-            levelUpManager.Update();
+            /*levelUpManager.Update();*/
+            if (Config.Item("AutoLevelUp").GetValue<bool>())
+            {
+                lvl1 = Config.Item("AutoLevelUp1").GetValue<StringList>().SelectedIndex;
+                lvl2 = Config.Item("AutoLevelUp2").GetValue<StringList>().SelectedIndex;
+                lvl3 = Config.Item("AutoLevelUp3").GetValue<StringList>().SelectedIndex;
+                lvl4 = Config.Item("AutoLevelUp4").GetValue<StringList>().SelectedIndex;
+            }
             switch (Orbwalker.ActiveMode)
             {
                 case Orbwalking.OrbwalkingMode.Combo:
@@ -391,6 +421,45 @@
             }
         }
 
+        #region Auto LevelUp
+        private static void Obj_AI_Base_OnLevelUp(Obj_AI_Base sender, EventArgs args)
+        {
+            if (!sender.IsMe || !Config.Item("AutoLevelUp").GetValue<bool>() ||
+                (ObjectManager.Player.Level < Config.Item("AutoLvlStartFrom").GetValue<Slider>().Value))
+                return;
+            if ((lvl2 == lvl3) || (lvl2 == lvl4) || (lvl3 == lvl4))
+                return;
+            var delay = 700;
+            Utility.DelayAction.Add(delay, () => LevelUp(lvl1));
+            Utility.DelayAction.Add(delay + 50, () => LevelUp(lvl2));
+            Utility.DelayAction.Add(delay + 100, () => LevelUp(lvl3));
+            Utility.DelayAction.Add(delay + 150, () => LevelUp(lvl4));
+        }
+
+        private static void LevelUp(int indx)
+        {
+            if (ObjectManager.Player.Level < 4)
+            {
+                if ((indx == 0) && (ObjectManager.Player.Spellbook.GetSpell(SpellSlot.Q).Level == 0))
+                    ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.Q);
+                if ((indx == 1) && (ObjectManager.Player.Spellbook.GetSpell(SpellSlot.W).Level == 0))
+                    ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.W);
+                if ((indx == 2) && (ObjectManager.Player.Spellbook.GetSpell(SpellSlot.E).Level == 0))
+                    ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.E);
+            }
+            else
+            {
+                if (indx == 0)
+                    ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.Q);
+                if (indx == 1)
+                    ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.W);
+                if (indx == 2)
+                    ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.E);
+                if (indx == 3)
+                    ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.R);
+            }
+        }
+        #endregion
         private static void FlashCombo()
         {
             if (HeroManager.Enemies.Count(x => x.IsValidTarget(R.Range + R.Width + 425f)) > 0 && R.IsReady() &&
@@ -1012,6 +1081,60 @@
             }
         }
 
+        /*private static void LastHit2()
+        {
+            if (!E.IsReady())
+            {
+                return;
+            }
+            if (Config.Item("LastHitE", true).GetValue<bool>())
+            {
+                var minions =
+                    MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly)
+                        .Where(
+                            m =>
+                                m.Health > 5 &&
+                                m.Health <
+                                (Orbwalker.ActiveMode != Orbwalking.OrbwalkingMode.LastHit
+                                    ? E.GetDamage(m)
+                                    : E.GetDamage(m) * Config.Item("eLHDamage", true).GetValue<Slider>().Value / 100) &&
+                                E.CanCast(m) &&
+                                HealthPrediction.GetHealthPrediction(m, (int)(m.Distance(Player) / E.Speed * 1000)) > 0);
+                if (minions != null && LastAttackedminiMinion != null)
+                {
+                    foreach (var minion in
+                        minions.Where(
+                            m =>
+                                m.NetworkId != LastAttackedminiMinion.NetworkId ||
+                                (m.NetworkId == LastAttackedminiMinion.NetworkId &&
+                                 Utils.GameTimeTickCount - LastAttackedminiMinionTime > 700)))
+                    {
+                        if (minion.Team == GameObjectTeam.Neutral && minion.CountAlliesInRange(500) > 0 &&
+                            minion.NetworkId != LastAttackedminiMinion.NetworkId)
+                        {
+                            continue;
+                        }
+
+                        if (minion.Distance(Player) <= Player.AttackRange && !Orbwalking.CanAttack() &&
+                            Orbwalking.CanMove(100))
+                        {
+                            if (E.Cast(minion).IsCasted())
+                            {
+                                Orbwalking.MoveTo(Game.CursorPos, 80f);
+                            }
+                        }
+                        else if (minion.Distance(Player) > Player.AttackRange)
+                        {
+                            if (E.Cast(minion).IsCasted())
+                            {
+                                Orbwalking.MoveTo(Game.CursorPos, 80f);
+                            }
+                        }
+                    }
+                }
+            }
+        }*/
+
         private static void LastHit()
         {
             var castE = Config.Item("LastHitE").GetValue<bool>() && E.IsReady();
@@ -1045,6 +1168,14 @@
                     }
                 }
             }
+        }
+
+        private static void Stack()
+        {
+            if (Player.InFountain() ||(Orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.None))
+                if (Items.HasItem(3004, Player) || Items.HasItem(3003, Player) || Items.HasItem(3070, Player) ||
+                    Items.HasItem(3073, Player) || Items.HasItem(3008, Player))
+                    Q.Cast(Player.ServerPosition);
         }
 
         private static void Game_OnWndProc(WndEventArgs args)
@@ -1116,6 +1247,21 @@
                 args.Process = Config.Item("UseAACombo").GetValue<bool>();
 
                 var target = args.Target as Obj_AI_Base;
+
+                if (target != null)
+                {
+                    if (E.IsReady() && target.HasBuffOfType(BuffType.Poison) && target.IsValidTarget(E.Range))
+                    {
+                        args.Process = false;
+                    }
+                }
+            }
+
+            if (Orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.LaneClear || Orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.LastHit)
+            {
+                args.Process = Config.Item("UseAaFarm").GetValue<bool>();
+
+                var target = args.Target as Obj_AI_Minion;
 
                 if (target != null)
                 {
